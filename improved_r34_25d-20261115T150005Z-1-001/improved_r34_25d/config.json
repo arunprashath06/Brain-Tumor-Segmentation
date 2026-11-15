@@ -1,0 +1,46 @@
+{
+  "RUN_NAME": "improved_r34_25d",
+  "SEED": 42,
+  "QUICK": false,
+  "TEST_FRAC": 0.15,
+  "KFOLD": 5,
+  "USE_2_5D": true,
+  "PCT_CLIP": [
+    1,
+    99
+  ],
+  "POS_OVERSAMPLE": 2.5,
+  "AUG": true,
+  "BATCH": 8,
+  "WORKERS": 2,
+  "ARCH": "smp_unet",
+  "ENCODER": "resnet34",
+  "PRETRAINED": true,
+  "ATTENTION": "scse",
+  "DROPOUT": 0.2,
+  "REGION_LOSS": "tversky",
+  "TVERSKY_AB": [
+    0.3,
+    0.7
+  ],
+  "FOCAL_AG": [
+    0.75,
+    2.0
+  ],
+  "LOSS_WEIGHTS": [
+    1.0,
+    1.0
+  ],
+  "EPOCHS": 100,
+  "LR_DECODER": 0.001,
+  "LR_ENCODER": 0.0001,
+  "WEIGHT_DECAY": 0.0001,
+  "SCHEDULER": "cosine_restarts",
+  "WARMUP_EPOCHS": 3,
+  "AMP": true,
+  "TTA": 4,
+  "THRESH_SWEEP": true,
+  "POST_MIN_SIZE": 40,
+  "USE_DRIVE": true,
+  "SPACING_MM": null
+}

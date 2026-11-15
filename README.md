@@ -1,2 +1,78 @@
-# Brain-Tumor-Segmentation
-Brain Tumor Segmentation using 2D U-Net and TCGA-LGG MRI Dataset
+# Brain Tumor Segmentation and Volumetric Delineation
+
+Streamlit front end for 2.5D UNet checkpoints trained on the Kaggle **TCGA-LGG** brain MRI
+dataset. It segments tumor regions on axial slices, reports confidence, and — when the dataset
+is present — compares each prediction against the ground-truth mask with Dice and IoU.
+
+![overlay](model_comparison.png)
+
+## Run
+
+```bash
+pip install -r requirements.txt
+python -m streamlit run app.py
+```
+
+On Windows, if Streamlit crashes with `OSError: [WinError 64]`, bind it to IPv4 loopback:
+
+```bash
+python -m streamlit run app.py --server.address 127.0.0.1
+```
+
+## Tabs
+
+- **Dataset** — browse `archive/kaggle_3m/TCGA_*`, pick a patient and slice, and see
+  MRI / ground truth / probability map / GT-vs-prediction side by side with Dice, IoU and
+  tumor-area percentages. One click evaluates every tumor slice of the patient and reports
+  mean slice Dice plus volume error.
+- **Upload** — run the model on your own PNG/JPG/BMP/TIF slices. Several files are treated as
+  one volume; slice order is taken from filenames.
+- **Training results** — the metrics, learning curves, threshold ablation, per-patient volumes
+  and figures saved by the original training runs.
+- **Notes & caveats** — architecture, preprocessing contract and a reproducibility check.
+
+## Models
+
+Each run folder holds `config.json`, `best_fold*.pt` and its evaluation artifacts. The checkpoints
+are bare `state_dict`s, so the app rebuilds the architecture from the config and reads the input
+channel count from the encoder stem, then loads with `strict=True`.
+
+| Run | Encoder | Folds | Notes |
+|---|---|---|---|
+| `improved_r34_25d` | ResNet-34 | 0–3 | 80 epochs, scSE, Tversky + focal |
+| `upgraded_efficientnet_b4` | EfficientNet-B4 | 0 | 100 epochs, cosine restarts |
+| `efficientnet_b4_25d` | EfficientNet-B4 | 0–1 | 100 epochs, cosine |
+
+Input: nine channels = three neighbouring axial slices, tiled. Image size 384 (not recorded in
+`config.json`; inferred from the saved overlay tiles). Intensities stay on the 0–255 scale after a
+percentile clip — dividing by 255 collapses every prediction to a constant.
+
+## Reproducibility notes
+
+`results.json` records test Dice 0.674 on tumor slices for `improved_r34_25d`. Re-evaluated here
+against the dataset masks, the same checkpoints reach about **0.10** slice Dice. That held across
+9-channel layouts, three intensity scalings, two input sizes, thresholds 0.1–0.8 and all eight
+image orientations, so it is not a preprocessing detail that is still missing — the weights do not
+reproduce the reported numbers on this data. The training script was not part of the saved
+artifacts.
+
+## Repository layout
+
+```
+app.py                 Streamlit app
+requirements.txt       runtime dependencies
+ablation_log.csv       threshold / config sweep from the original runs
+model_comparison.png   figure saved by the training run
+<run>-*/               configs, weights, histories, metrics, figures
+archive/kaggle_3m/     dataset (not committed — see below)
+```
+
+The dataset (~1.1 GB) and the checkpoints (~90 MB each) are excluded from git. Download the
+Kaggle *LGG MRI Segmentation* dataset into `archive/kaggle_3m/` and put the `.pt` files back in
+their run folders, or track the weights with Git LFS (`git lfs track "*.pt"`).
+
+## Limitations
+
+- No voxel spacing in the configs, so volumes are in pixels, not mm³.
+- Predictions depend on slice order; a single uploaded image fills the whole 2.5D window.
+- Research demo only, not a diagnostic tool.
