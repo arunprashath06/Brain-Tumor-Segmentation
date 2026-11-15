@@ -36,6 +36,39 @@ DATASET_ROOTS = [
 # --------------------------------------------------------------------------- #
 # Discovery
 # --------------------------------------------------------------------------- #
+ENCODER_NAMES = {
+    "resnet34": "ResNet-34",
+    "resnet50": "ResNet-50",
+    "efficientnet-b0": "EfficientNet-B0",
+    "efficientnet-b4": "EfficientNet-B4",
+}
+ATTENTION_NAMES = {"scse": "scSE", "cbam": "CBAM", "eca": "ECA"}
+
+
+def model_name(cfg: dict) -> str:
+    """Human-readable architecture, e.g. '2.5D ResNet-34 UNet + scSE'."""
+    encoder = str(cfg.get("ENCODER", "unet")).lower()
+    encoder_label = ENCODER_NAMES.get(
+        encoder, encoder.upper() if len(encoder) <= 4 else encoder.capitalize()
+    )
+    name = f"{encoder_label} UNet"
+    attention = str(cfg.get("ATTENTION") or "").lower()
+    if attention:
+        name += " + " + ATTENTION_NAMES.get(attention, attention.upper())
+    if cfg.get("USE_2_5D"):
+        name = "2.5D " + name
+    return name
+
+
+def short_tag(run_name: str) -> str:
+    """The part of a run name that is not the architecture, e.g. 'upgraded'."""
+    drop = {
+        "efficientnet", "resnet", "b0", "b4", "b7", "34", "50",
+        "25d", "unet", "2", "5d", "seg", "smp",
+    }
+    return " ".join(word for word in run_name.split("_") if word.lower() not in drop)
+
+
 def discover_runs() -> list[dict]:
     """Every best_fold*.pt that sits next to a config.json."""
     runs: list[dict] = []
@@ -65,7 +98,7 @@ def discover_runs() -> list[dict]:
             fold = os.path.basename(weight_path)[len("best_fold"):-len(".pt")]
             runs.append(
                 {
-                    "label": f"{run_name} · fold {fold}",
+                    "model": model_name(cfg),
                     "run": run_name,
                     "fold": fold,
                     "dir": run_dir,
@@ -76,6 +109,14 @@ def discover_runs() -> list[dict]:
                     "config": cfg,
                 }
             )
+
+    # Two runs can share an architecture (the EfficientNet-B4 pair does), so the
+    # run's own distinguishing tag is appended only when it is needed.
+    for run in runs:
+        duplicates = len({other["run"] for other in runs if other["model"] == run["model"]})
+        tag = f" ({short_tag(run['run']) or 'base'})" if duplicates > 1 else ""
+        run["label"] = f"{run['model']}{tag} · fold {run['fold']}"
+    runs.sort(key=lambda run: (run["encoder"], run["run"], run["fold"]))
     return runs
 
 
@@ -269,7 +310,7 @@ def heatmap(prob: np.ndarray) -> np.ndarray:
 def model_card(run: dict, in_channels: int, params: int) -> None:
     left, mid, right = st.columns([2, 2, 1])
     left.markdown(
-        f"**Model** · UNet + scSE attention  \n"
+        f"**Model** · {run['model']}  \n"
         f"**Encoder** · `{run['encoder']}` · **Params** · {params / 1e6:.1f} M"
     )
     mid.markdown(
