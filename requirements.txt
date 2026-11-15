@@ -1,5 +1,12 @@
+# CPU-only PyTorch: the CUDA wheels pull ~2 GB of nvidia libraries, which a
+# hosted demo does not need. Pinning the +cpu local version keeps the build small
+# and guarantees pip resolves from the PyTorch CPU index, not PyPI.
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+torch==2.15.0+cpu
+torchvision==0.29.2+cpu
+
 streamlit>=1.40
-torch>=2.0
 segmentation-models-pytorch>=0.3.4
 opencv-python-headless>=4.9
 numpy>=1.24
