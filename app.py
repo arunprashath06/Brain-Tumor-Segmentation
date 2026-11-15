@@ -283,7 +283,11 @@ def main() -> None:
 
     runs = discover_runs()
     if not runs:
-        st.error("No checkpoints found — expected */<run>/config.json next to best_fold*.pt.")
+        st.warning(
+            "No model checkpoint found in this deployment.\n\n"
+            "Expected `<run>/config.json` next to `best_fold*.pt`. The weights are ~90 MB each and "
+            "are kept out of git; see DEPLOY.md for adding one with Git LFS."
+        )
         return
 
     patients = list_patients()
