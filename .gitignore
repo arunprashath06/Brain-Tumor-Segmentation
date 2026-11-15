@@ -17,5 +17,6 @@ runs/
 
 # Course documents
 *.pdf
+!REPORT.pdf
 
 .freebuff/
