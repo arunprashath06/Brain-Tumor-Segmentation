@@ -17,8 +17,6 @@ runs/
 
 # Course documents
 *.pdf
-!REPORT.pdf
-!LPU_Project_Report.pdf
 
 .freebuff/
 
@@ -26,4 +24,7 @@ runs/
 report_lpu.html
 report_preview.png
 rpt_page*.png
+chk_p*.png
 app_demo.png
+
+# Report documents are generated locally and deliberately not tracked

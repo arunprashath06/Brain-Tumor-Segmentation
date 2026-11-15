@@ -80,6 +80,15 @@ On Colab, open `train_colab.ipynb` and run the cells in order. Each run folder g
 `threshold.json`, `results.json` and `volumetrics.csv`. The app discovers `runs/<name>/`
 automatically.
 
+## Report
+
+The written report is generated locally and is **not tracked in this repository** (college
+submissions are handed in separately). To rebuild it as a PDF:
+
+```bash
+python build_report.py     # writes LPU_Project_Report.pdf
+```
+
 ## Repository layout
 
 ```
