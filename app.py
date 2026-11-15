@@ -322,14 +322,47 @@ def main() -> None:
         st.header("Model")
         choice = st.selectbox("Checkpoint", labels, index=default_index)
         run = runs[labels.index(choice)]
+        st.caption(
+            f"{len(runs)} checkpoint(s) available from "
+            f"{len({r['run'] for r in runs})} run(s). Switch here to compare architectures."
+        )
 
         device = st.selectbox("Device", ["cuda", "cpu"] if torch.cuda.is_available() else ["cpu"], index=0)
-        size = st.select_slider("Input size", options=[256, 320, 384, 448, 512], value=REF_SIZE)
-        threshold = st.slider(
-            "Probability threshold", 0.05, 0.95,
-            value=float(min(max(run["threshold"], 0.05), 0.95)), step=0.025,
-            help="Lower values predict more tumor. The value saved with the run is the default.",
+        size = st.select_slider(
+            f"Input size (default {REF_SIZE})",
+            options=[256, 320, 384, 448, 512],
+            value=REF_SIZE,
+            help=(
+                f"Resolution every slice is resized to before inference. The model was trained at "
+                f"{REF_SIZE} px, which is why that is the default and the size all reported numbers "
+                f"were measured at. Decreasing to 320 or 256 runs faster, but the tumour covers fewer "
+                f"pixels and thin boundaries blur, so Dice falls. Increasing to 448 or 512 is slower "
+                f"and off-distribution — the learned filters expect {REF_SIZE} px — so accuracy usually "
+                f"falls as well."
+            ),
         )
+        if size != REF_SIZE:
+            st.caption(
+                f"⚠️ off-distribution: the model was trained at {REF_SIZE} px, so scores here are not "
+                "comparable with the reported ones."
+            )
+        else:
+            st.caption("✅ training resolution — numbers match the report.")
+
+        run_thr = round(float(run["threshold"]), 3)
+        threshold = st.slider(
+            f"Probability threshold (run default {run_thr:.3f})",
+            0.05, 0.95,
+            value=float(min(max(run["threshold"], 0.05), 0.95)), step=0.025,
+            help=(
+                "Each pixel gets a sigmoid probability; this is the cutoff that turns it into a "
+                "yes/no mask. Lower it and the mask grows: faint tumour is caught, but healthy tissue "
+                "gets included too. Raise it and the mask shrinks: borders look cleaner, but diffuse "
+                "edges are missed. The run default is the out-of-fold optimum, and it matters — this "
+                "checkpoint scores Dice 0.674 at 0.325 but only about 0.315 at 0.5."
+            ),
+        )
+        st.caption("lower → more tumour predicted · higher → smaller, more conservative mask")
         use_tta = st.checkbox("Flip TTA (4×, slower)", value=True)
         min_size_base = st.slider(
             "Drop components smaller than (px)", 0, 400, REF_MIN_SIZE, step=10,
