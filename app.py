@@ -265,6 +265,14 @@ def model_card(run: dict, in_channels: int, params: int) -> None:
         f"**Checkpoint** · `{run['weights']}`"
     )
     right.markdown(f"**Fold** · {run['fold']}  \n**Run** · `{run['run']}`")
+    st.caption(
+        "How it works: a **UNet** — an encoder (`{}`) that compresses the slice into features, and a "
+        "decoder that rebuilds a tumour mask from them. **scSE attention** re-weights the most useful "
+        "channels and regions. It sees **{}-channel 2.5D input** (three neighbouring slices tiled). "
+        "This exact checkpoint holds **{:.1f} M** learned parameters.".format(
+            run['encoder'], in_channels, params / 1e6
+        )
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -282,6 +290,12 @@ def main() -> None:
 
     st.title("🧠 Brain Tumor Segmentation and Volumetric Delineation")
     st.caption("2.5D UNet · scSE attention · Kaggle TCGA-LGG brain MRI · Flair slices, axial view.")
+    st.info(
+        "**What this is:** a deep-learning model that looks at one brain MRI slice and outlines any "
+        "tumour it finds. Pick a patient below (or upload your own image) and the app shows the "
+        "MRI, the model's probability map, the final outline, and — for dataset slices — how that "
+        "outline compares with the radiologist's ground truth."
+    )
 
     labels = [run["label"] for run in runs]
     default_index = next(
@@ -359,17 +373,24 @@ def main() -> None:
             )
 
             m1, m2, m3, m4, m5 = st.columns(5)
-            m1.metric("Dice vs GT", f"{dice(mask, gt):.3f}")
-            m2.metric("IoU vs GT", f"{iou(mask, gt):.3f}")
-            m3.metric("Predicted area", f"{coverage:.2f}%")
-            m4.metric("Ground-truth area", f"{gt_coverage:.2f}%")
-            m5.metric("Mean confidence", f"{mean_conf * 100:.0f}%")
+            m1.metric("Dice vs GT", f"{dice(mask, gt):.3f}", help="Overlap with the ground truth: 1.0 = identical, 0.0 = no overlap at all.")
+            m2.metric("IoU vs GT", f"{iou(mask, gt):.3f}", help="Same idea as Dice, stricter: intersection ÷ union.")
+            m3.metric("Predicted area", f"{coverage:.2f}%", help="How much of this slice the model marked as tumour.")
+            m4.metric("Ground-truth area", f"{gt_coverage:.2f}%", help="How much of this slice the radiologist marked as tumour.")
+            m5.metric("Mean confidence", f"{mean_conf * 100:.0f}%", help="Average probability inside the predicted outline.")
+            st.caption(
+                "**How to read these numbers** — *Dice* and *IoU* compare the model's outline with the "
+                "radiologist's; above ~0.7 is good, and 0 means the two do not overlap anywhere. "
+                "*Predicted area* vs *ground-truth area* shows whether the model over- or under-segments: "
+                "close numbers mean similar size. *Mean confidence* is how sure the model is inside its "
+                "own outline — high confidence with low Dice means it is confidently wrong."
+            )
 
             v1, v2, v3, v4 = st.columns(4)
-            v1.image(to_rgb(images[index]), caption="MRI", width="stretch")
-            v2.image((gt * 255).astype(np.uint8), caption="Ground truth", clamp=True, width="stretch")
-            v3.image(heatmap(prob), caption="Prediction probability", width="stretch")
-            v4.image(compare_overlay(slices[index], gt, mask), caption="GT (green) vs prediction (red)", width="stretch")
+            v1.image(to_rgb(images[index]), caption="1 · Input — the MRI slice", width="stretch")
+            v2.image((gt * 255).astype(np.uint8), caption="2 · Ground truth — radiologist's tumour outline", clamp=True, width="stretch")
+            v3.image(heatmap(prob), caption="3 · Model probability — brighter means 'more likely tumour'", width="stretch")
+            v4.image(compare_overlay(slices[index], gt, mask), caption="4 · Overlap — green = ground truth, red = model, yellow = both agree", width="stretch")
 
             if tumor_slices:
                 if st.button(f"Evaluate all {len(tumor_slices)} tumor slices of this patient"):
@@ -448,10 +469,10 @@ def main() -> None:
             )
 
             c1, c2, c3, c4 = st.columns(4)
-            c1.image(to_rgb(slices[index]), caption="Input", width="stretch")
-            c2.image(heatmap(prob), caption="Probability", width="stretch")
-            c3.image((mask * 255).astype(np.uint8), caption="Mask", clamp=True, width="stretch")
-            c4.image(overlay(slices[index], mask), caption="Overlay", width="stretch")
+            c1.image(to_rgb(slices[index]), caption="1 · Input — your MRI slice", width="stretch")
+            c2.image(heatmap(prob), caption="2 · Model probability — brighter means 'more likely tumour'", width="stretch")
+            c3.image((mask * 255).astype(np.uint8), caption=f"3 · Final mask — white where probability ≥ {threshold:.2f}", clamp=True, width="stretch")
+            c4.image(overlay(slices[index], mask), caption="4 · Outline drawn on the scan", width="stretch")
 
             ok, encoded = cv2.imencode(".png", (mask * 255).astype(np.uint8))
             if ok:
@@ -544,6 +565,13 @@ kept on the 0–255 intensity scale. Dividing by 255 flattens the output to a co
 scale is part of the model's contract.
 
 **Post-processing** — sigmoid → threshold → connected components below `POST_MIN_SIZE` dropped.
+
+### What the numbers mean
+- **Dice** — overlap between the predicted outline and the ground truth, from 0 (none) to 1 (identical).
+- **IoU** — the same comparison, stricter: intersection divided by union.
+- **Predicted / ground-truth area** — percentage of the slice covered by each mask. Similar values mean the model found a tumour of the right size pointing at the right place; a large gap means under- or over-segmentation.
+- **Mean / peak confidence** — average and maximum sigmoid probability. High confidence with low Dice is the model being confidently wrong, which is exactly what the shipped checkpoints do.
+- **Threshold** — probability above which a pixel is called tumour. Lowering it grows the mask, raising it shrinks it.
 
 ### Reproducibility check
 The seven saved checkpoints were evaluated against the Kaggle LGG masks. Across 9-channel
