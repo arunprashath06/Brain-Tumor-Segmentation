@@ -197,24 +197,22 @@ def build_html() -> str:
 
     <h2>7. Output and Demonstration</h2>
     <div class="fig"><img src="improved_r34_25d-20261115T150005Z-1-001/improved_r34_25d/overlay_best.png"
-      style="width:89%;"></div>
+      style="width:80%;"></div>
     <div class="cap">Figure 1: Predictions on held-out slices &mdash; input, ground truth, probability
     map and overlay for best, random and worst cases.</div>
-    <div class="fig"><img src="figure_app.png" style="width:89%;"></div>
+    <div class="fig"><img src="figure_app.png" style="width:80%;"></div>
     <div class="cap">Figure 2: Live application output for one slice &mdash; MRI input, ground truth,
     probability map, and overlap (green = truth, red = prediction).</div>
     <p><b>Application views.</b> The interface shows these four panels for any slice, names the model in
-    use (UNet, ResNet-34 encoder, scSE attention, 9-channel 2.5D input, 24.6 M parameters, exact
-    checkpoint file) and explains each number: Dice and IoU for overlap, predicted versus ground-truth area for
-    over-segmentation, and mean confidence for certainty. Users may upload
-    their own slices or evaluate every tumour slice of a patient in one click.</p>
+    use (UNet, ResNet-34, scSE, 9-channel 2.5D, 24.6 M parameters, exact checkpoint) and explains each
+    number: Dice and IoU for overlap, predicted versus ground-truth area for over-segmentation, and mean
+    confidence for certainty.</p>
 
     <h2>8. Conclusion and Future Scope</h2>
     <p>A complete, runnable system was built: a 2.5D UNet trained on TCGA-LGG, a web application that
-    explains every output it produces, and a reproducible training pipeline. The investigation also
-    showed the shipped checkpoints do not reproduce their recorded scores, so retraining is the next
-    step &mdash; with the provided script, out-of-fold threshold selection, over-segmentation
-    suppression, and voxel spacing recorded for mm&sup3; volumes.</p>
+    explains every output, and a reproducible training pipeline. The investigation also showed the
+    shipped checkpoints do not reproduce their recorded scores, so retraining is the next step, using
+    the provided script with out-of-fold threshold selection and over-segmentation suppression.</p>
 
     <h2>9. References</h2>
     <ol>
