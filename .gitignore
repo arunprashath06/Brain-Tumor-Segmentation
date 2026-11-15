@@ -20,3 +20,9 @@ runs/
 !REPORT.pdf
 
 .freebuff/
+
+# Report build artefacts
+report_lpu.html
+report_preview.png
+rpt_page*.png
+app_demo.png
