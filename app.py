@@ -404,7 +404,20 @@ def main() -> None:
             ),
         )
         st.caption("lower → more tumour predicted · higher → smaller, more conservative mask")
-        use_tta = st.checkbox("Flip TTA (4×, slower)", value=True)
+        if not os.path.exists(os.path.join(run["dir"], "results.json")):
+            st.caption(
+                "⚠️ no threshold sweep was recorded for this run, so 0.5 here is an untuned default "
+                "rather than an optimum — its Dice is not comparable with a swept run."
+            )
+        use_tta = st.checkbox(
+            "Flip TTA (4×, slower)", value=True,
+            help=(
+                "Averages the prediction over the slice and its horizontal and vertical flips. It "
+                "helps a well-calibrated model, but when the flipped views disagree the average can "
+                "fall below the threshold and the mask disappears — turn it off if the outline "
+                "vanishes. The EfficientNet-B4 (upgraded) checkpoint behaves this way."
+            ),
+        )
         min_size_base = st.slider(
             "Drop components smaller than (px)", 0, 400, REF_MIN_SIZE, step=10,
             help="POST_MIN_SIZE from the training config, scaled to the input size.",
@@ -464,7 +477,10 @@ def main() -> None:
                     f"tumor predicted on **{coverage:.2f}%** of the slice "
                     f"(mean confidence **{mean_conf * 100:.0f}%**, peak **{prob.max() * 100:.0f}%**)"
                     if mask.any()
-                    else "**no tumor predicted** at this threshold"
+                    else (
+                        f"**no tumor predicted** at this threshold "
+                        f"(peak probability **{prob.max() * 100:.0f}%**)"
+                    )
                 )
             )
 
@@ -592,7 +608,7 @@ def main() -> None:
 
     # -------------------------------------------------------------- performance
     with tab_perf:
-        st.subheader("Held-out test metrics (from the original run)")
+        st.subheader("Held-out test metrics (recorded during training)")
         rows = []
         for seen in sorted({r["run"]: r for r in runs}.values(), key=lambda r: r["run"]):
             results_path = os.path.join(seen["dir"], "results.json")
@@ -610,6 +626,13 @@ def main() -> None:
                 "These are the scores recorded during training. On this machine the same checkpoints "
                 "score ≈0.1 Dice against the dataset masks — see Notes & caveats."
             )
+        else:
+            st.info("No run in this deployment has a saved `results.json`, so no test metrics exist.")
+        if not os.path.exists(os.path.join(run["dir"], "results.json")):
+            st.caption(
+                f"`{run['run']}` has no `results.json`, so its own scores were never recorded — the "
+                "table above covers only the runs that have them."
+            )
 
         history_files = sorted(glob.glob(os.path.join(run["dir"], "history_fold*.csv")))
         if history_files:
@@ -618,6 +641,11 @@ def main() -> None:
             history = pd.read_csv(os.path.join(run["dir"], picked))
             st.line_chart(history.set_index("epoch")[["dice_all", "dice_tumor", "iou_all", "iou_tumor"]])
             st.caption(f"{len(history)} epochs · final train loss {history['train_loss'].iloc[-1]:.4f}")
+        else:
+            st.subheader(f"Training curves — {run['run']}")
+            st.caption(
+                "No `history_fold*.csv` was saved for this run, so its training curves are unavailable."
+            )
 
         ablation_path = os.path.join(ROOT, "ablation_log.csv")
         if os.path.exists(ablation_path):
@@ -634,15 +662,19 @@ def main() -> None:
             )
 
         figures = sorted(glob.glob(os.path.join(run["dir"], "*.png")))
-        comparison = os.path.join(ROOT, "model_comparison.png")
-        if os.path.exists(comparison):
-            figures.append(comparison)
         if figures:
-            st.subheader("Saved figures")
+            st.subheader(f"Saved figures — {run['run']}")
             columns = st.columns(2)
             for position, path in enumerate(figures):
                 with columns[position % 2]:
                     st.image(path, caption=os.path.basename(path), width="stretch")
+        else:
+            st.caption(f"No figures were saved for `{run['run']}`.")
+
+        comparison = os.path.join(ROOT, "model_comparison.png")
+        if os.path.exists(comparison):
+            st.subheader("Cross-run comparison (covers all runs, not just this one)")
+            st.image(comparison, caption="model_comparison.png", width="stretch")
 
     # ------------------------------------------------------------------- notes
     with tab_notes:
