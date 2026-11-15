@@ -12,6 +12,7 @@ archive/
 *.log
 debug_panel.png
 screenshot*.png
+runs/
 
 # Course documents
 *.pdf

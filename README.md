@@ -56,14 +56,41 @@ image orientations, so it is not a preprocessing detail that is still missing â€
 reproduce the reported numbers on this data. The training script was not part of the saved
 artifacts.
 
+## Retrain
+
+`train.py` trains the same architecture with a protocol you can defend: grouped 5-fold CV over
+patients, the probability threshold chosen on each fold's **validation** split only, and
+per-patient Dice3D plus volume error from the same pass, so every patient is scored once.
+
+Smoke test (CPU, ~1 min):
+
+```bash
+python train.py --data archive/kaggle_3m --out runs/smoke --folds 1 --epochs 1 \
+  --limit-patients 4 --size 192 --batch 2 --max-batches 1 --encoder-weights none
+```
+
+Full run (GPU strongly recommended):
+
+```bash
+python train.py --data archive/kaggle_3m --out runs/r34_25d --epochs 25
+```
+
+On Colab, open `train_colab.ipynb` and run the cells in order. Each run folder gets
+`config.json` (with `IMG_SIZE`, spacing, git commit), `history_fold*.csv`, `best_fold*.pt`,
+`threshold.json`, `results.json` and `volumetrics.csv`. The app discovers `runs/<name>/`
+automatically.
+
 ## Repository layout
 
 ```
 app.py                 Streamlit app
+train.py               training / evaluation script
+train_colab.ipynb      Colab notebook for train.py
 requirements.txt       runtime dependencies
 ablation_log.csv       threshold / config sweep from the original runs
 model_comparison.png   figure saved by the training run
 <run>-*/               configs, weights, histories, metrics, figures
+runs/                  output of train.py (not committed)
 archive/kaggle_3m/     dataset (not committed â€” see below)
 ```
 
