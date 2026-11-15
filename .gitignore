@@ -18,6 +18,7 @@ runs/
 # Course documents
 *.pdf
 !REPORT.pdf
+!LPU_Project_Report.pdf
 
 .freebuff/
 
