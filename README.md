@@ -100,7 +100,8 @@ ablation_log.csv       threshold / config sweep from the original runs
 model_comparison.png   figure saved by the training run
 <run>-*/               configs, weights, histories, metrics, figures
 runs/                  output of train.py (not committed)
-archive/kaggle_3m/     dataset (not committed — see below)
+archive/demo/kaggle_3m/ three complete patients, committed so the hosted demo has ground truth
+archive/kaggle_3m/     full dataset (not committed — see below)
 ```
 
 The dataset (~1.1 GB) and the checkpoints (~90 MB each) are excluded from git. Download the

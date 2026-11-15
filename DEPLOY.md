@@ -42,12 +42,26 @@ Python dependencies. OpenCV is `opencv-python-headless`, so no system packages a
 | Feature | Online |
 |---|---|
 | Upload an MRI slice and get a mask + confidence | yes (needs the checkpoint) |
-| Browse `archive/kaggle_3m` patients with Dice/IoU | no — the 1.1 GB dataset is not in the repo |
+| Browse patients with Dice/IoU against ground truth | yes — 3 bundled patients (`archive/demo`) |
+| Browse all 110 patients | no — the full 1.1 GB dataset stays local |
 | Training results and saved figures | yes |
 
-The dataset tabs read from `archive/kaggle_3m`; if that folder is absent the app says so instead of
-crashing. To demo ground-truth comparison online, either commit a few sample slices or run the app
-locally where the dataset lives.
+### The bundled demo subset
+
+The full dataset is 1.1 GB and GitHub rejects anything near that, so `archive/demo/kaggle_3m/`
+ships **three complete patients** (17 MB, image and mask for every slice). The hosted app therefore
+shows the Dataset tab with real ground truth for those three, and the Upload tab works on any image.
+Locally, when `archive/kaggle_3m/` exists, the app prefers it and lists all 110 patients.
+
+To change which patients are bundled:
+
+```bash
+mkdir -p archive/demo/kaggle_3m
+cp -r "archive/kaggle_3m/TCGA_CS_4941_19960909" archive/demo/kaggle_3m/
+git add archive/demo && git commit -m "Bundle another demo patient" && git push
+```
+
+Each patient costs roughly 6 MB (23 slices, image plus mask).
 
 ## Alternative: Hugging Face Spaces
 

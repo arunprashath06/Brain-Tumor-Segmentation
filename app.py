@@ -25,7 +25,12 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 # checkpoints carry no metadata, so these are the documented defaults.
 REF_SIZE = 384
 REF_MIN_SIZE = 40
-DATASET_DIR = os.path.join(ROOT, "archive", "kaggle_3m")
+# The full dataset lives outside git; a small bundled subset keeps the hosted
+# demo working, and the full dataset is preferred when it is present locally.
+DATASET_ROOTS = [
+    os.path.join(ROOT, "archive", "kaggle_3m"),
+    os.path.join(ROOT, "archive", "demo", "kaggle_3m"),
+]
 
 
 # --------------------------------------------------------------------------- #
@@ -76,11 +81,18 @@ def discover_runs() -> list[dict]:
 
 @st.cache_data(show_spinner=False)
 def list_patients() -> list[str]:
-    if not os.path.isdir(DATASET_DIR):
-        return []
-    return sorted(
-        path for path in glob.glob(os.path.join(DATASET_DIR, "TCGA_*")) if os.path.isdir(path)
-    )
+    """Patients from every available dataset root, without duplicates."""
+    seen: set[str] = set()
+    patients: list[str] = []
+    for root in DATASET_ROOTS:
+        if not os.path.isdir(root):
+            continue
+        for path in sorted(glob.glob(os.path.join(root, "TCGA_*"))):
+            name = os.path.basename(path)
+            if os.path.isdir(path) and name not in seen:
+                seen.add(name)
+                patients.append(path)
+    return patients
 
 
 @st.cache_data(show_spinner="Reading patient slices…")
@@ -341,13 +353,19 @@ def main() -> None:
     with tab_data:
         if not patients:
             st.warning(
-                "No dataset found. Expected the Kaggle LGG folder at `archive/kaggle_3m/TCGA_*`."
+                "No dataset found. Expected patient folders under "
+                "`archive/kaggle_3m/` or `archive/demo/kaggle_3m/`."
             )
         else:
             pick, side = st.columns([3, 2])
             patient_dir = pick.selectbox(
                 "Patient", patients, index=0, format_func=lambda path: os.path.basename(path)
             )
+            if not os.path.isdir(DATASET_ROOTS[0]):
+                pick.caption(
+                    f"{len(patients)} patients from the bundled demo subset. Drop the full "
+                    "TCGA-LGG download into `archive/kaggle_3m/` to browse all 110."
+                )
             images, masks, names = load_patient(patient_dir)
             tumor_slices = [i for i, mask in enumerate(masks) if mask.sum() > 0]
 
