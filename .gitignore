@@ -29,3 +29,6 @@ chk_p*.png
 app_demo.png
 
 # Report documents are generated locally and deliberately not tracked
+
+# local streamlit run log
+.streamlit_run.log
