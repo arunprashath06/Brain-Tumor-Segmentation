@@ -60,13 +60,7 @@ def model_name(cfg: dict) -> str:
     return name
 
 
-def short_tag(run_name: str) -> str:
-    """The part of a run name that is not the architecture, e.g. 'upgraded'."""
-    drop = {
-        "efficientnet", "resnet", "b0", "b4", "b7", "34", "50",
-        "25d", "unet", "2", "5d", "seg", "smp",
-    }
-    return " ".join(word for word in run_name.split("_") if word.lower() not in drop)
+
 
 
 def discover_runs() -> list[dict]:
@@ -110,13 +104,24 @@ def discover_runs() -> list[dict]:
                 }
             )
 
-    # Two runs can share an architecture (the EfficientNet-B4 pair does), so the
-    # run's own distinguishing tag is appended only when it is needed.
+    # Folds and repeat runs of one architecture are the same model, so the picker
+    # offers a single entry per architecture: the best-documented checkpoint wins
+    # (recorded metrics first, then the run with the most folds, then fold 0).
+    def rank(run: dict) -> tuple:
+        return (
+            os.path.exists(os.path.join(run["dir"], "results.json")),
+            len(glob.glob(os.path.join(run["dir"], "best_fold*.pt"))),
+            run["fold"] == "0",
+        )
+
+    best: dict[str, dict] = {}
     for run in runs:
-        duplicates = len({other["run"] for other in runs if other["model"] == run["model"]})
-        tag = f" ({short_tag(run['run']) or 'base'})" if duplicates > 1 else ""
-        run["label"] = f"{run['model']}{tag} · fold {run['fold']}"
-    runs.sort(key=lambda run: (run["encoder"], run["run"], run["fold"]))
+        current = best.get(run["model"])
+        if current is None or rank(run) > rank(current):
+            best[run["model"]] = run
+    runs = sorted(best.values(), key=lambda run: run["model"])
+    for run in runs:
+        run["label"] = run["model"]
     return runs
 
 
@@ -364,8 +369,8 @@ def main() -> None:
         choice = st.selectbox("Checkpoint", labels, index=default_index)
         run = runs[labels.index(choice)]
         st.caption(
-            f"{len(runs)} checkpoint(s) available from "
-            f"{len({r['run'] for r in runs})} run(s). Switch here to compare architectures."
+            f"{len(runs)} model(s) available — one checkpoint per architecture. "
+            "Switch here to compare them; the fold and run used are shown below."
         )
 
         device = st.selectbox("Device", ["cuda", "cpu"] if torch.cuda.is_available() else ["cpu"], index=0)
@@ -415,7 +420,7 @@ def main() -> None:
                 "Averages the prediction over the slice and its horizontal and vertical flips. It "
                 "helps a well-calibrated model, but when the flipped views disagree the average can "
                 "fall below the threshold and the mask disappears — turn it off if the outline "
-                "vanishes. The EfficientNet-B4 (upgraded) checkpoint behaves this way."
+                "vanishes. A weakly calibrated checkpoint can behave this way."
             ),
         )
         min_size_base = st.slider(

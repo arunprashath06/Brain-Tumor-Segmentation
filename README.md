@@ -43,6 +43,13 @@ channel count from the encoder stem, then loads with `strict=True`.
 | `upgraded_efficientnet_b4` | EfficientNet-B4 | 0 | 100 epochs, cosine restarts |
 | `efficientnet_b4_25d` | EfficientNet-B4 | 0–1 | 100 epochs, cosine |
 
+The project has **two model architectures** — ResNet-34 and EfficientNet-B4, both 2.5D U-Net +
+scSE. The app offers one checkpoint per architecture (the ResNet-34 run with recorded metrics, and
+the EfficientNet-B4 run with its history), because extra folds and the second EfficientNet run are
+repeat trainings of the same architecture rather than different models. `upgraded_efficientnet_b4`
+stays on disk for reference but is not shipped: it is byte-identical in config to
+`efficientnet_b4_25d` and carries no saved metrics.
+
 Input: nine channels = three neighbouring axial slices, tiled. Image size 384 (not recorded in
 `config.json`; inferred from the saved overlay tiles). Intensities stay on the 0–255 scale after a
 percentile clip — dividing by 255 collapses every prediction to a constant.
